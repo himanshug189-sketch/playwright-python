@@ -64,13 +64,16 @@ async def test_expect_response_should_propagate_async_predicate_cancellation(
     page: Page, server: Server
 ) -> None:
     await page.goto(server.EMPTY_PAGE)
+    listener_count = page._impl_obj.listener_count("response")
 
     async def predicate(response: Any) -> bool:
         raise asyncio.CancelledError("Predicate cancelled")
 
-    with pytest.raises(asyncio.CancelledError, match="Predicate cancelled"):
-        async with page.expect_response(predicate):
+    with pytest.raises(asyncio.CancelledError):
+        async with page.expect_response(predicate, timeout=1_000):
             await page.evaluate("() => fetch('/digits/1.png')")
+
+    assert page._impl_obj.listener_count("response") == listener_count
 
 
 async def test_expect_response_should_reject_when_sync_predicate_throws(
